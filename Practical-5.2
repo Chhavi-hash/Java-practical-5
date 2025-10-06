@@ -1,0 +1,86 @@
+// Simple Seat Booking System using Node.js HTTP module
+const http = require('http');
+
+let seats = {};
+for (let i = 1; i <= 10; i++) {
+  seats[i] = { status: "available", lockTimer: null };
+}
+
+const server = http.createServer((req, res) => {
+  const url = req.url;
+  const method = req.method;
+  res.setHeader("Content-Type", "application/json");
+
+  // GET /seats → View all seats
+  if (url === "/seats" && method === "GET") {
+    res.writeHead(200);
+    return res.end(JSON.stringify(seats, null, 2));
+  }
+
+  // POST /lock/:id → Lock a seat
+  if (url.startsWith("/lock/") && method === "POST") {
+    const id = url.split("/")[2];
+    const seat = seats[id];
+
+    if (!seat) {
+      res.writeHead(404);
+      return res.end(JSON.stringify({ message: "Seat not found" }));
+    }
+
+    if (seat.status === "booked") {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ message: "Seat already booked" }));
+    }
+
+    if (seat.status === "locked") {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ message: "Seat already locked" }));
+    }
+
+    seat.status = "locked";
+    seat.lockTimer = setTimeout(() => {
+      if (seat.status === "locked") seat.status = "available";
+    }, 60000); // auto unlock after 1 minute
+
+    res.writeHead(200);
+    return res.end(JSON.stringify({
+      message: Seat ${id} locked successfully. Confirm within 1 minute.
+    }));
+  }
+
+  // POST /confirm/:id → Confirm seat booking
+  if (url.startsWith("/confirm/") && method === "POST") {
+    const id = url.split("/")[2];
+    const seat = seats[id];
+
+    if (!seat) {
+      res.writeHead(404);
+      return res.end(JSON.stringify({ message: "Seat not found" }));
+    }
+
+    if (seat.status !== "locked") {
+      res.writeHead(400);
+      return res.end(JSON.stringify({
+        message: "Seat is not locked and cannot be booked"
+      }));
+    }
+
+    clearTimeout(seat.lockTimer);
+    seat.status = "booked";
+
+    res.writeHead(200);
+    return res.end(JSON.stringify({
+      message: Seat ${id} booked successfully!
+    }));
+  }
+
+  // Default: Not Found
+  res.writeHead(404);
+  res.end(JSON.stringify({ message: "Not Found" }));
+});
+
+// ✅ Use port 8080 in Programiz
+const PORT = 8080;
+server.listen(PORT, () => {
+  console.log(✅ Server running at http://localhost:${PORT});
+});
